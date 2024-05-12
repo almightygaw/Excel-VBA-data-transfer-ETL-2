@@ -1,0 +1,329 @@
+Sub template_update()
+' annual process, create template file to be used for new FY, refresh with new data from source files
+'  Dim masterFilePath As String
+'  masterFilePath = "master file path\master file.xlsb"
+'  Dim masterWb As Workbook
+'  Set masterWb = Workbooks.Open(masterFilePath)
+  
+  Dim masterFeeSchedFilePath As String
+  masterFeeSchedFilePath = "file path\master fee schedule.xlsb"
+  Dim masterFeeSched As Workbook
+  Set masterFeeSched = Workbooks.Open(masterFeeSchedFilePath)
+  
+  Dim lookuTable1 As Worksheet
+  Set lookuTable1 = masterFeeSched.Worksheets("Lookup Table 1")
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+  '' Sheet1 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+  Dim Sheet1 As Worksheet
+  Set Sheet1 = masterFeeSched.Worksheets("Sheet1")
+
+  Dim sourceFilePath As String
+  sourceFilePath = "source file path\source File.xlsx"
+  Dim sourceWb As Workbook
+  Set sourceWb = Workbooks.Open(sourceFilePath)
+  Dim sourceWs As Worksheet
+  Set sourceWs = sourceWb.Worksheets("sourceSheet1")
+
+  Dim filePathString As String
+  filePathString = Sheet1.Range("R1").Value2
+  Sheet1.Range("R1").Value2 = Replace(filePathString, LTrim(Year(Date) - 1), LTrim(Str(Year(Date))))
+
+  Dim doNotDeleteString As String ' text to be included with header
+  doNotDeleteString = Sheet1.Range("AI1").Value2
+
+  sourceWs.Copy Before:=Sheet1
+
+  Application.DisplayAlerts = False
+  Sheet1.Delete
+  Application.DisplayAlerts = True
+
+  With masterFeeSched.Worksheets("sourceSheet1").Range("R1")
+    With .Range("R1")
+      .Value2 = filePathString
+      .HorizontalAlignment = xlLeft
+      .Font.Bold = True
+      .Font.Color = vbBlue
+    End With
+
+    With .Range("AI1")
+      .Value2 = doNotDeleteString
+      .HorizontalAlignment = xlLeft
+      .Font.Bold = True
+      .Font.Color = vbRed
+      .Font.Size = 20
+    End With
+  End With
+
+  masterFeeSched.Sheets("sourceSheet1").Name = "Sheet1"
+  Set Sheet1 = masterFeeSched.Worksheets("Sheet1")
+
+  Set Sheet1 = masterFeeSched.Worksheets("Sheet1")
+
+  Columns(1).Insert
+
+  With Sheet1.Range("A10")
+    .Value2 = "Column1"
+    .Font.Name = "Arial Narrow"
+    .Font.Bold = True
+    .Font.Size = 8
+  End With
+
+  For Each i In Sheet1.Range(Range("B11"), Range("B11").End(xlDown))
+    If Not IsEmpty(i.Offset(0, 1)) Then
+      i.Offset(0, -1).Formula = i.Value2 & "-" & i.Offset(0, 1).Value2
+    Else
+      i.Offset(0, -1).Formula = i.Value2
+    End If
+  Next i
+
+  Sheet1.Columns("A").AutoFit
+
+  With Sheet1.Range("AG10")
+    .Value2 = "Lookup Category"
+    .Font.Name = "Arial Narrow"
+    .Font.Size = 8
+    .Font.Bold = True
+  End With
+
+  For Each i In Sheet1.Range(Range("A11"), Range("A11").End(xlDown))
+    i.Offset(0, 32).Value2 = Application.WorksheetFunction.XLookup(i, lookuTable1.Range("A:A"), lookuTable1.Range("J:J"), "")
+  Next i
+
+  Sheet1.Select
+  ActiveWindow.FreezePanes = False
+
+  sourceWb.Close SaveChanges = False
+  
+  Dim m As Long
+  m = 10
+  
+  For Each i In Sheet1.Range(Range("A11"), Range("A11").End(xlDown))
+    m = m + 1
+    If InStr(i.Value2, "#") > 0 Then
+      Sheet1.Range("A" & m).EntireRow.Delete
+    End If
+  Next i
+  
+  For Each i In Sheet1.Range(Range("B11"), Range("B11").End(xlDown))
+    i.Offset(0, 31).Formula = WorksheetFunction.XLookup(i.Value2, lookuTable1.Range("A:A"), lookuTable1.Range("J:J"), "")
+  Next i
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+  '' Sheet2 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+  Dim Sheet2 As Worksheet
+  Set Sheet2 = masterFeeSched.Worksheets("Fee Schedule")
+
+  Set sourceWb = Workbooks.Open("file path\Fees.xlsx")
+  Set sourceWs = sourceWb.Worksheets("Fees")
+
+  Dim x As Long
+  x = 0
+
+  For Each i In sourceWs.Range(Range("A1"), Range("A1").End(xlDown))
+    x = x + 1
+  Next i
+
+  Sheet2.Activate
+  sourceWs.Range("A1:B" & x).Copy Destination:=Sheet2.Range("A2:B" & x + 1)
+  sourceWs.Range("C1:C" & x).Copy Destination:=Sheet2.Range("D2:D" & x + 1)
+  sourceWs.Range("L1:L" & x).Copy Destination:=Sheet2.Range("E2:E" & x + 1)
+  sourceWs.Range("D1:F" & x).Copy Destination:=Sheet2.Range("F2:H" & x + 1)
+
+  For Each i In Sheet2.Range(Range("A3"), Range("A3").End(xlDown))
+    If IsEmpty(i.Offset(0, 1)) Then
+      i.Offset(0, 2).Formula = i.Value2
+    Else
+      i.Offset(0, 2).Formula = i.Value2 & "-" & i.Offset(0, 1).Value2
+    End If
+  Next i
+
+  For Each i In Sheet2.Range(Range("A3"), Range("A3").End(xlDown))
+    i.Offset(0, 8).Value2 = "Fee Schedule"
+    i.Offset(0, 9).Value2 = Application.WorksheetFunction.XLookup(i, lookuTable1.Range("A:A"), lookuTable1.Range("J:J"), "")
+  Next i
+
+  sourceWb.Close SaveChanges = False
+
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+  '' Sheet3 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+  Dim Sheet3 As Worksheet
+  Set Sheet3 = masterFeeSched.Worksheets("Drug ASP")
+
+  Set sourceWb = Workbooks.Open("file path\Pricing File.xlsx")
+  Set sourceWs = sourceWb.Worksheets("ASP")
+
+  Dim Sheet3Array As Variant
+  Sheet3Array = Array("A1:A8")
+
+  For Each i In Sheet3Array
+    sourceWs.Range(i).UnMerge
+    Sheet3.Range(i).UnMerge
+    sourceWs.Range(i).Copy Destination:=Sheet3.Range(i)
+  Next i
+
+
+  For i = 1 To 8
+    Sheet3.Range("A" & i & ":" & "J" & i).Merge Across = True
+    sourceWs.Range("A" & i & ":" & "K" & i).Merge Across = True
+  Next i
+
+
+  x = 0
+
+  For Each i In sourceWs.Range(Range("A9"), Range("A9").End(xlDown))
+    x = x + 1
+  Next i
+
+  sourceWs.Range("A9:D" & x).Copy Destination:=Sheet3.Range("A9:D" & x)
+  sourceWs.Range("F9:K" & x).Copy Destination:=Sheet3.Range("E9:J" & x)
+
+  sourceWb.Close SaveChanges = False
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+  '' Sheet4 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+  Dim Sheet4 As Worksheet
+  Set Sheet4 = masterFeeSched.Worksheets("Diagnostic Lab")
+
+  Set sourceWb = Workbooks.Open("file path\Diagnostic Code file.xlsx")
+  Set sourceWs = sourceWb.Worksheets("Diag Codes")
+
+  sourceWs.Range("A:H").Copy Destination:=Sheet4.Range("A:H")
+
+  sourceWb.Close SaveChanges = False
+  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+  '' Sheet5 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+  Dim Sheet5 As Worksheet
+  Set Sheet5 = masterFeeSched.Worksheets("Other Fee Schedule")
+  
+'  Sheet5.Range(Range("A4"), Range("J4").End(xlDown)).Delete
+  Sheet5.Rows(4 & ":" & Sheet5.Rows.Count).Delete
+
+  ' Medicine
+  Set sourceWb = Workbooks.Open("file path\Other Fee Schedule.xlsx")
+  Set sourceWs = sourceWb.Worksheets(1)
+  
+  Dim effectiveString As String
+  effectiveString = sourceWs.Range("A2").Value & " (Other Medicine)"
+  
+  x = 4
+  
+  Dim y As Long
+  y = 4
+  
+  For Each i In sourceWs.Range(Range("A4"), Range("A4").End(xlDown))
+    If Not InStr(i.Value2, "#") > 0 Then
+      y = y + 1
+    End If
+  Next i
+  
+  sourceWs.Range("A" & x & ":I" & y).Copy Destination:=Sheet5.Range("A" & x & ":I" & y)
+  Sheet5.Range("J" & x & ":J" & y).Value2 = "Medicine"
+  
+  Debug.Print "x = " & x & "     y = " & y
+  
+  Application.DisplayAlerts = False
+  sourceWb.Close SaveChanges = False
+  Application.DisplayAlerts = True
+
+
+  ' Drugs
+  Set sourceWb = Workbooks.Open("file path\Drug Fee Schedule.xlsx")
+  Set sourceWs = sourceWb.Worksheets(1)
+
+  effectiveString = effectiveString & "; " & sourceWs.Range("A2").Value2 & " (Other Drug)"
+
+  x = y + 1
+
+  y = x
+  
+  Dim header As Long
+  header = 3
+
+  For Each i In sourceWs.Range(Range("A4"), Range("A4").End(xlDown))
+    If Not InStr(i.Value2, "#") > 0 Then
+      y = y + 1
+    End If
+  Next i
+
+  Debug.Print "x = " & x & "     y = " & y
+
+  sourceWs.Range("A4:F" & (y - x) + header).Copy Destination:=Sheet5.Range("A" & x & ":F" & y)
+  sourceWs.Range("G4:G" & (y - x) + header).Copy Destination:=Sheet5.Range("I" & x & ":I" & y)
+  Sheet5.Range("J" & x & ":J" & y - 1).Value2 = "Drugs"
+
+  Application.DisplayAlerts = False
+  sourceWb.Close SaveChanges = False
+  Application.DisplayAlerts = True
+
+
+  ' Radiology
+  Set sourceWb = Workbooks.Open("file path\Radiology Fee Schedule.xlsx")
+  Set sourceWs = sourceWb.Worksheets(1)
+  
+  effectiveString = effectiveString & "; " & sourceWs.Range("A2").Value2 & " (Radiology)"
+
+  sourceWs.Activate
+  ActiveSheet.Cells.UnMerge
+  
+  x = y
+
+  y = x
+  
+  header = 4
+  
+  For Each i In sourceWs.Range(Range("A5"), Range("A5").End(xlDown))
+    If Not InStr(i.Value2, "#") > 0 Then
+      y = y + 1
+    End If
+  Next i
+
+  Debug.Print "x = " & x & "     y = " & y
+
+  sourceWs.Range("A5:I" & (y - x) + header).Copy Destination:=Sheet5.Range("A" & x & ":I" & y)
+  Sheet5.Range("J" & x & ":J" & y - 1).Value2 = "Radiology"
+
+  Application.DisplayAlerts = False
+  sourceWb.Close SaveChanges = False
+  Application.DisplayAlerts = True
+
+
+  ' Surgery
+  Set sourceWb = Workbooks.Open("file path\Surgery Fee Schedule.xlsx")
+  Set sourceWs = sourceWb.Sheets(1)
+  
+  effectiveString = effectiveString & "; " & sourceWs.Range("A2").Value2 & " (Surgery)"
+
+  x = y
+
+  y = x
+  
+  header = 4
+
+  For Each i In sourceWs.Range(Range("A4"), Range("A4").End(xlDown))
+    If Not InStr(i.Value2, "#") > 0 Then
+      y = y + 1
+    End If
+  Next i
+
+  Debug.Print "x = " & x & "     y = " & y
+  
+  sourceWs.Range("A4:I" & (y - x) + header).Copy Destination:=Sheet5.Range("A" & x & ":I" & y)
+  Sheet5.Range("J" & x & ":J" & y - 1).Value2 = "Surgery"
+
+  Application.DisplayAlerts = False
+  sourceWb.Close SaveChanges = False
+  Application.DisplayAlerts = True
+  
+  ' header, align, formatting
+  Sheet5.Range("A2").Value2 = effectiveString
+
+'  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'  ' FEE SCHEDULE tab ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'  Dim feeSchedTab As Worksheet
+'  Set feeSchedTab = masterFeeSched.Worksheets("Fee Schedule")
+  
+  
+  
+  
+  
+  
+
+End Sub
